@@ -2,6 +2,25 @@
 
 runitlink is a helper script for managing runit services easily, supporting both system and user-level services. It wraps sv commands with convenient flags, provides dynamic multi-column listing, and includes tab completion for Bash, Zsh, and Fish.
 
+## User features
+assumes you have for runsvdir
+```
+$HOME/.runit
+$HOME/.runit/sv
+$HOME/.runit/runsvdir
+```
+add it as startup command for you let say wm
+```
+runsvdir $HOME/.runit/runsvdir/
+```
+or use system level runit service to enable the runsvdir
+```
+/etc/runit/service/runit-user/run
+```
+script located at service/
+
+
+
 ## Features
 
 Enable / disable services (--link / --unlink / --enable / --disable)
