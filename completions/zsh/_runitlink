@@ -1,0 +1,19 @@
+#compdef runitlink
+
+_runitlink_completions() {
+  local -a opts services
+  opts=(--user --link --unlink --enable --disable --down --up --status --start --stop --restart --list --help)
+
+  if [[ $words[-2] == --link || $words[-2] == --enable || $words[-2] == --unlink || $words[-2] == --disable || $words[-2] == --down || $words[-2] == --up || $words[-2] == --status || $words[-2] == --start || $words[-2] == --stop || $words[-2] == --restart ]]; then
+    if [[ " ${words[@]} " == *"--user"* ]]; then
+      services=( ${(f)"$(ls -1 $HOME/.runit/sv 2>/dev/null)"} )
+    else
+      services=( ${(f)"$(ls -1 /etc/runit/sv $HOME/.runit/sv 2>/dev/null)"} )
+    fi
+    compadd $services
+  else
+    compadd $opts
+  fi
+}
+
+_runitlink_completions
