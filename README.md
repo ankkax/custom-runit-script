@@ -125,5 +125,5 @@ This README is fully ready to paste into your GitHub repository.
 easy install
 
 
-curl -Lo /usr/local/bin/runitlink https://github.com/yourusername/runitlink/raw/main/runitlink
+curl -Lo /usr/local/bin/runitlink [https://github.com/ankkax/custom-runit-script](https://raw.githubusercontent.com/ankkax/custom-runit-script/refs/heads/main/runitlink)
 chmod +x /usr/local/bin/runitlink
