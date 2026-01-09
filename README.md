@@ -1,4 +1,4 @@
-# runitlink
+# runitlink to control runit service
 
 runitlink is a helper script for managing runit services easily, supporting both system and user-level services. It wraps sv commands with convenient flags, provides dynamic multi-column listing, and includes tab completion for Bash, Zsh, and Fish.
 
@@ -70,16 +70,16 @@ Save the file as:
 
 ##Usage
 ### List all system services
-runitlink --list
+`runitlink --list`
 
 ### List user services
-runitlink --user --list
+`runitlink --user --list`
 
 ### Enable / link a service
-runitlink --enable mpd
+`runitlink --enable <service>`
 
 ### Disable / unlink a service
-runitlink --disable mpd
+`runitlink --disable <service>`
 
 ### Mark a service down or up
 ```
@@ -108,8 +108,3 @@ easy install
 
 curl -Lo /usr/local/bin/runitlink https://github.com/yourusername/runitlink/raw/main/runitlink
 chmod +x /usr/local/bin/runitlink
-
-
-to make it extra convenient for users.
-
-Do you want me to add that?
