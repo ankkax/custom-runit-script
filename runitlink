@@ -2,27 +2,26 @@
 set -e
 
 usage() {
-  echo "Usage: runitlink [--user] --link|--unlink|--enable|--disable|--down|--up|--status|--start|--stop|--restart <service>"
+  echo "Usage: runitlink [--user] --link|--unlink|--enable|--disable|--down|--up|--status|--start|--stop|--restart|--list <service>"
   exit 1
 }
 
-MODE=system
+MODE=""
 ACTION=""
 SERVICE=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
   --user) MODE=user ;;
-  --link) ACTION=link ;;
-  --enable) ACTION=link ;;
-  --unlink) ACTION=unlink ;;
-  --disable) ACTION=unlink ;;
+  --link | --enable) ACTION=link ;;
+  --unlink | --disable) ACTION=unlink ;;
   --down) ACTION=down ;;
   --up) ACTION=up ;;
   --status) ACTION=status ;;
   --start) ACTION=start ;;
   --stop) ACTION=stop ;;
   --restart) ACTION=restart ;;
+  --list) ACTION=list ;;
   -h | --help) usage ;;
   --*)
     echo "Unknown option: $1"
@@ -34,7 +33,105 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ -z "$ACTION" ] && usage
+
+# ----- LIST -----
+if [ "$ACTION" = "list" ]; then
+  if [ "$MODE" = "user" ]; then
+    SV_DIRS="$HOME/.runit/sv"
+    RUN_DIRS="$HOME/.runit/runsvdir"
+  else
+    SV_DIRS="/etc/runit/sv $HOME/.runit/sv"
+    RUN_DIRS="/run/runit/service $HOME/.runit/runsvdir"
+  fi
+
+  services=""
+
+  # Collect services with markers
+  for svdir in $SV_DIRS; do
+    [ -d "$svdir" ] || continue
+    for svc in "$svdir"/*; do
+      [ -d "$svc" ] || continue
+      name=$(basename "$svc")
+
+      markers=""
+
+      # linked / down
+      for rundir in $RUN_DIRS; do
+        [ -e "$rundir/$name" ] && markers="$markers(linked) "
+        [ -f "$rundir/$name/down" ] && markers="$markers(down) "
+      done
+
+      # user marker
+      case "$svdir" in
+      "$HOME/.runit/sv"*) markers="$markers(user) " ;;
+      esac
+
+      # Combine service + markers, trim trailing space
+      combined="$name"
+      [ -n "$markers" ] && combined="$combined ${markers% }"
+
+      # Add to services string, newline separated
+      services="$services
+$combined"
+    done
+  done
+
+  # Sort and remove duplicates
+  services_sorted=$(printf "%s\n" "$services" | sed '/^$/d' | sort -u)
+
+  # Terminal width
+  TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
+
+  # Determine longest line
+  max_len=0
+  while IFS= read -r line; do
+    len=${#line}
+    [ $len -gt $max_len ] && max_len=$len
+  done <<EOF
+$services_sorted
+EOF
+
+  col_width=$((max_len + 4))
+  [ $col_width -lt 1 ] && col_width=20
+  cols=$((TERM_WIDTH / col_width))
+  [ $cols -lt 1 ] && cols=1
+
+  # Print in columns
+  i=0
+  line=""
+  while IFS= read -r svc; do
+    if command -v printf >/dev/null 2>&1; then
+      padded=$(printf "%-${col_width}s" "$svc" 2>/dev/null || printf "%-${col_width}s" "$svc")
+    else
+      padded="$svc    "
+    fi
+    line="$line$padded"
+    i=$((i + 1))
+    if [ $((i % cols)) -eq 0 ]; then
+      echo "$line"
+      line=""
+    fi
+  done <<EOF
+$services_sorted
+EOF
+  [ -n "$line" ] && echo "$line"
+
+  exit 0
+fi
+
 [ -z "$SERVICE" ] && usage
+
+# ----- AUTO-DETECT MODE -----
+if [ -z "$MODE" ]; then
+  if [ -d "/etc/runit/sv/$SERVICE" ]; then
+    MODE=system
+  elif [ -d "$HOME/.runit/sv/$SERVICE" ]; then
+    MODE=user
+  else
+    echo "Service not found in system or user runit directories"
+    exit 1
+  fi
+fi
 
 if [ "$MODE" = "user" ]; then
   SV_DIR="$HOME/.runit/sv"
@@ -63,9 +160,21 @@ unlink)
   ;;
 down)
   $DO touch "$DOWNFILE"
+  # stop service immediately
+  if [ "$MODE" = "user" ]; then
+    sv stop "$SRC"
+  else
+    $DO sv stop "$SERVICE"
+  fi
   ;;
 up)
   $DO rm -f "$DOWNFILE"
+  # start service immediately
+  if [ "$MODE" = "user" ]; then
+    sv start "$SRC"
+  else
+    $DO sv start "$SERVICE"
+  fi
   ;;
 status)
   if [ "$MODE" = "user" ]; then
