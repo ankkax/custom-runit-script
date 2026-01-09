@@ -1,0 +1,98 @@
+#!/bin/sh
+set -e
+
+usage() {
+  echo "Usage: runitlink [--user] --link|--unlink|--enable|--disable|--down|--up|--status|--start|--stop|--restart <service>"
+  exit 1
+}
+
+MODE=system
+ACTION=""
+SERVICE=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  --user) MODE=user ;;
+  --link) ACTION=link ;;
+  --enable) ACTION=link ;;
+  --unlink) ACTION=unlink ;;
+  --disable) ACTION=unlink ;;
+  --down) ACTION=down ;;
+  --up) ACTION=up ;;
+  --status) ACTION=status ;;
+  --start) ACTION=start ;;
+  --stop) ACTION=stop ;;
+  --restart) ACTION=restart ;;
+  -h | --help) usage ;;
+  --*)
+    echo "Unknown option: $1"
+    usage
+    ;;
+  *) SERVICE="$1" ;;
+  esac
+  shift
+done
+
+[ -z "$ACTION" ] && usage
+[ -z "$SERVICE" ] && usage
+
+if [ "$MODE" = "user" ]; then
+  SV_DIR="$HOME/.runit/sv"
+  RUN_DIR="$HOME/.runit/runsvdir"
+  DO=""
+else
+  SV_DIR="/etc/runit/sv"
+  RUN_DIR="/run/runit/service"
+  DO="sudo"
+fi
+
+SRC="$SV_DIR/$SERVICE"
+DST="$RUN_DIR/$SERVICE"
+DOWNFILE="$DST/down"
+
+case "$ACTION" in
+link)
+  [ -d "$SRC" ] || {
+    echo "Service not found: $SRC"
+    exit 1
+  }
+  $DO ln -s "$SRC" "$DST"
+  ;;
+unlink)
+  $DO rm -f "$DST"
+  ;;
+down)
+  $DO touch "$DOWNFILE"
+  ;;
+up)
+  $DO rm -f "$DOWNFILE"
+  ;;
+status)
+  if [ "$MODE" = "user" ]; then
+    sv status "$SRC"
+  else
+    $DO sv status "$SERVICE"
+  fi
+  ;;
+start)
+  if [ "$MODE" = "user" ]; then
+    sv start "$SRC"
+  else
+    $DO sv start "$SERVICE"
+  fi
+  ;;
+stop)
+  if [ "$MODE" = "user" ]; then
+    sv stop "$SRC"
+  else
+    $DO sv stop "$SERVICE"
+  fi
+  ;;
+restart)
+  if [ "$MODE" = "user" ]; then
+    sv restart "$SRC"
+  else
+    $DO sv restart "$SERVICE"
+  fi
+  ;;
+esac
